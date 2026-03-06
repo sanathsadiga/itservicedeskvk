@@ -291,6 +291,21 @@
   font-weight: 600;
 }
 
+.action-card .current-value {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 15px;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
+  border-left: 3px solid #0066cc;
+}
+
+.action-card .current-value strong {
+  color: #0066cc;
+  font-weight: 600;
+}
+
 .action-card form {
   display: flex;
   flex-direction: column;

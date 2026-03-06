@@ -36,7 +36,6 @@ const IncidentDetail = () => {
         setUsers(usersRes.data.users);
       } catch (error) {
         toast.error('Failed to load incident');
-        console.error(error);
         navigate('/dashboard');
       } finally {
         setLoading(false);
@@ -318,6 +317,7 @@ const IncidentDetail = () => {
           {canAssign && incident.status !== 'closed' && (
             <div className="action-card">
               <h3>Assign Incident</h3>
+              <p className="current-value">Currently Assigned to: <strong>{incident.assigned_to_name || 'Unassigned'}</strong></p>
               <form onSubmit={handleAssign}>
                 <select
                   value={assignUser}
@@ -345,6 +345,7 @@ const IncidentDetail = () => {
           {incident.status !== 'closed' && (
             <div className="action-card">
               <h3>Update Status</h3>
+              <p className="current-value">Current Status: <strong>{incident.status.replace('_', ' ').toUpperCase()}</strong></p>
               <form onSubmit={handleStatusChange}>
                 <select
                   value={newStatus}
