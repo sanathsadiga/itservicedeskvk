@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ status: '', priority: '' });
+  const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ offset: 0, limit: 20 });
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -20,6 +21,7 @@ const Dashboard = () => {
       return;
     }
     fetchIncidents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination, navigate]);
 
   const fetchIncidents = async () => {
@@ -32,7 +34,6 @@ const Dashboard = () => {
       setIncidents(response.data.incidents);
     } catch (error) {
       toast.error('Failed to load incidents');
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -43,6 +44,17 @@ const Dashboard = () => {
     setFilters((prev) => ({ ...prev, [name]: value }));
     setPagination({ offset: 0, limit: 20 });
   };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Filter incidents based on search query (ticket number)
+  const displayIncidents = searchQuery.trim() === '' 
+    ? incidents 
+    : incidents.filter((incident) =>
+        incident.ticket_number.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   const getStatusClass = (status) => {
     const statusMap = {
@@ -80,6 +92,14 @@ const Dashboard = () => {
       </div>
 
       <div className="filters-section">
+        <input
+          type="text"
+          placeholder="Search by ticket number..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className="search-input"
+        />
+
         <select
           name="status"
           value={filters.status}
@@ -109,7 +129,7 @@ const Dashboard = () => {
 
       {loading ? (
         <div className="loading">Loading incidents...</div>
-      ) : incidents.length === 0 ? (
+      ) : displayIncidents.length === 0 ? (
         <div className="empty-state">
           <p>No incidents found</p>
         </div>
@@ -130,7 +150,7 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {incidents.map((incident) => (
+              {displayIncidents.map((incident) => (
                 <tr key={incident.id}>
                   <td className="ticket-number">{incident.ticket_number}</td>
                   <td className="title">{incident.title}</td>

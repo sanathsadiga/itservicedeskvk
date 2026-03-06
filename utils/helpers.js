@@ -1,7 +1,7 @@
 const generateTicketNumber = () => {
   const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 10000);
-  return `TKT-${timestamp}-${random}`;
+  const random = Math.floor(Math.random() * 1000);
+  return `TKT${String(timestamp).slice(-6)}${String(random).padStart(3, '0')}`;
 };
 
 const validateEmail = (email) => {

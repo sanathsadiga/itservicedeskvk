@@ -19,6 +19,9 @@ const IncidentDetail = () => {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [newStatus, setNewStatus] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionSuggestions, setMentionSuggestions] = useState([]);
+  const [mentionQuery, setMentionQuery] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +45,46 @@ const IncidentDetail = () => {
 
     fetchData();
   }, [id, navigate]);
+
+  const handleCommentChange = (e) => {
+    const text = e.target.value;
+    setComment(text);
+
+    // Check if @ was just typed
+    const lastAtIndex = text.lastIndexOf('@');
+    const lastSpaceIndex = text.lastIndexOf(' ');
+
+    if (lastAtIndex > lastSpaceIndex) {
+      const query = text.substring(lastAtIndex + 1);
+      setMentionQuery(query);
+
+      if (query.length > 0) {
+        const filtered = users.filter(u =>
+          u.username.toLowerCase().includes(query.toLowerCase()) &&
+          u.username !== user?.username
+        );
+        setMentionSuggestions(filtered);
+        setShowMentionSuggestions(filtered.length > 0);
+      } else {
+        setMentionSuggestions(users.filter(u => u.username !== user?.username));
+        setShowMentionSuggestions(true);
+      }
+    } else {
+      setShowMentionSuggestions(false);
+      setMentionSuggestions([]);
+      setMentionQuery('');
+    }
+  };
+
+  const handleSelectMention = (username) => {
+    const lastAtIndex = comment.lastIndexOf('@');
+    const beforeMention = comment.substring(0, lastAtIndex);
+    const afterMention = comment.substring(lastAtIndex + mentionQuery.length + 1);
+    setComment(`${beforeMention}@${username} ${afterMention}`);
+    setShowMentionSuggestions(false);
+    setMentionSuggestions([]);
+    setMentionQuery('');
+  };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -238,12 +281,28 @@ const IncidentDetail = () => {
             </div>
 
             <form onSubmit={handleAddComment} className="comment-form">
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a comment..."
-                rows="3"
-              />
+              <div className="mention-input-wrapper">
+                <textarea
+                  value={comment}
+                  onChange={handleCommentChange}
+                  placeholder="Add a comment... (Type @ to mention users)"
+                  rows="3"
+                />
+                {showMentionSuggestions && mentionSuggestions.length > 0 && (
+                  <div className="mention-suggestions">
+                    {mentionSuggestions.map(u => (
+                      <div
+                        key={u.id}
+                        className="mention-suggestion-item"
+                        onClick={() => handleSelectMention(u.username)}
+                      >
+                        <span className="mention-username">@{u.username}</span>
+                        <span className="mention-email">{u.email}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="submit"
                 className="btn-primary"

@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { authorizeRole } = require('../middleware/auth');
 const { generateTicketNumber, getClientIp } = require('../utils/helpers');
-const { sendIncidentCreationEmail, sendIncidentClosureEmail, sendAssignmentEmail, sendStatusUpdateEmail, sendCommentNotificationEmail } = require('../services/emailService');
+const { sendIncidentCreationEmail, sendIncidentClosureEmail, sendAssignmentEmail, sendStatusUpdateEmail, sendCommentNotificationEmail, sendMentionNotificationEmail } = require('../services/emailService');
 const { logAudit, logEmailAttempt } = require('../services/auditService');
 
 const router = express.Router();
@@ -475,6 +475,27 @@ router.post('/:incidentId/comment', [
     const commenter = commenterData[0];
     const incidentData = incident[0];
 
+    // Extract mentions from comment (format: @username)
+    const mentionRegex = /@(\w+)/g;
+    const mentionedUsernames = [...new Set(comment.match(mentionRegex) || [])].map(m => m.substring(1));
+
+    // Get emails for mentioned users
+    const mentionedEmails = [];
+    if (mentionedUsernames.length > 0) {
+      for (const username of mentionedUsernames) {
+        const [mentionedUserData] = await connection.execute(
+          'SELECT id, email FROM users WHERE username = ?',
+          [username]
+        );
+        if (mentionedUserData[0] && mentionedUserData[0].id !== userId) {
+          mentionedEmails.push({
+            email: mentionedUserData[0].email,
+            username: username
+          });
+        }
+      }
+    }
+
     // Send email to incident creator if they're not the one commenting
     if (incidentData.created_by !== userId && incidentData.created_by_email) {
       const emailSent = await sendCommentNotificationEmail(
@@ -503,13 +524,26 @@ router.post('/:incidentId/comment', [
       }
     }
 
-    await logAudit(userId, 'ADD_COMMENT', 'comment', result.insertId, {}, { comment }, clientIp);
+    // Send email to mentioned users
+    for (const mentionedUser of mentionedEmails) {
+      const emailSent = await sendMentionNotificationEmail(
+        incidentData,
+        commenter,
+        mentionedUser.email,
+        mentionedUser.username,
+        comment
+      );
+      await logEmailAttempt(incidentId, mentionedUser.email, 'mention', `You were mentioned in ${incidentData.ticket_number}`, emailSent ? 'sent' : 'failed');
+    }
+
+    await logAudit(userId, 'ADD_COMMENT', 'comment', result.insertId, {}, { comment, mentions: mentionedUsernames }, clientIp);
 
     connection.release();
 
     res.status(201).json({
       message: 'Comment added successfully',
-      comment_id: result.insertId
+      comment_id: result.insertId,
+      mentioned_users: mentionedUsernames
     });
   } catch (error) {
     console.error('Add comment error:', error);
